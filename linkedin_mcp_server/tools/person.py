@@ -6,9 +6,10 @@ with configurable section selection.
 """
 
 import logging
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 from linkedin_mcp_server.callbacks import MCPContextProgressCallback
 from linkedin_mcp_server.constants import TOOL_TIMEOUT_SECONDS
@@ -252,3 +253,71 @@ def register_person_tools(mcp: FastMCP) -> None:
                 raise_tool_error(relogin_exc, "get_sidebar_profiles")
         except Exception as e:
             raise_tool_error(e, "get_sidebar_profiles")  # NoReturn
+
+    @mcp.tool(
+        timeout=TOOL_TIMEOUT_SECONDS,
+        title="Update Person Profile",
+        annotations={"destructiveHint": True, "openWorldHint": True},
+        tags={"person", "actions"},
+        exclude_args=["extractor"],
+    )
+    async def update_person_profile(
+        section: Annotated[
+            Literal[
+                "about", "headline", "skills", "experience", "education", "contact_info"
+            ],
+            Field(description="The profile section to modify"),
+        ],
+        action: Annotated[
+            Literal["update", "add", "remove"],
+            Field(
+                description="The action to perform (e.g., 'update' for about/headline, 'add' for skills/experience)"
+            ),
+        ],
+        data: Annotated[
+            dict[str, Any],
+            Field(
+                description="Dictionary of fields to update. For 'about'/'headline', use {'text': '...'}. For 'skills', use {'name': '...'}. For 'experience', use {'title': '...', 'company': '...', 'description': '...'}"
+            ),
+        ],
+        confirm: Annotated[bool, Field(description="Must be True to apply changes")],
+        ctx: Context,
+        extractor: Any | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update a specific section of your own LinkedIn profile.
+
+        This tool allows you to modify your own profile sections like About, Headline,
+        Skills, and Experiences. It requires confirm=True to execute.
+
+        Args:
+            section: The profile section to modify.
+            action: The action to perform.
+            data: Dictionary of fields to update.
+            confirm: Must be True to apply changes.
+            ctx: FastMCP context for progress reporting
+        """
+        try:
+            extractor = extractor or await get_ready_extractor(
+                ctx, tool_name="update_person_profile"
+            )
+            logger.info("Updating profile section: %s (action=%s)", section, action)
+
+            await ctx.report_progress(
+                progress=0, total=100, message=f"Starting {section} {action}"
+            )
+
+            result = await extractor.update_person_profile(
+                section, action, data, confirm=confirm
+            )
+
+            await ctx.report_progress(progress=100, total=100, message="Complete")
+            return result
+
+        except AuthenticationError as e:
+            try:
+                await handle_auth_error(e, ctx)
+            except Exception as relogin_exc:
+                raise_tool_error(relogin_exc, "update_person_profile")
+        except Exception as e:
+            raise_tool_error(e, "update_person_profile")

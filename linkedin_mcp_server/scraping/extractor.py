@@ -116,6 +116,15 @@ _MESSAGING_CLOSE_SELECTOR = (
     'button[aria-label*="Close"]'
 )
 
+_PROFILE_EDIT_INTRO_SELECTOR = '[aria-label^="Edit intro"]'
+_PROFILE_EDIT_ABOUT_SELECTOR = '[aria-label^="Edit about"]'
+_PROFILE_ADD_EXPERIENCE_SELECTOR = '[aria-label^="Add new experience"]'
+_PROFILE_SAVE_BUTTON_SELECTOR = (
+    'button.artdeco-button--primary, '
+    'button:has-text("Save"), '
+    '.artdeco-modal__footer button.artdeco-button--primary'
+)
+
 
 def _connection_result(
     url: str,
@@ -1323,6 +1332,199 @@ class LinkedInExtractor:
             return None
         display_name = display_name.strip()
         return display_name or None
+
+    async def update_person_profile(
+        self,
+        section: Literal[
+            "about", "headline", "skills", "experience", "education", "contact_info"
+        ],
+        action: Literal["update", "add", "remove"],
+        data: dict[str, Any],
+        *,
+        confirm: bool = False,
+    ) -> dict[str, Any]:
+        """Update a specific section of the user's own LinkedIn profile.
+
+        Args:
+            section: The profile section to modify.
+            action: The action to perform (update, add, or remove).
+            data: Dictionary of fields to update.
+            confirm: Must be True to apply changes.
+        """
+        if not confirm:
+            return {
+                "status": "confirmation_required",
+                "message": f"Set confirm=true to {action} your {section}.",
+            }
+
+        await self._navigate_to_page("https://www.linkedin.com/in/")
+        await detect_rate_limit(self._page)
+        await handle_modal_close(self._page)
+
+        if section == "about":
+            return await self._update_about(data.get("text", ""))
+        elif section == "headline":
+            return await self._update_headline(data.get("text", ""))
+        elif section == "skills":
+            if action == "add":
+                return await self._add_skill(data.get("name", ""))
+            return {
+                "status": "error",
+                "message": f"Action '{action}' not yet supported for skills.",
+            }
+        elif section == "experience":
+            if action == "add":
+                return await self._add_experience(data)
+            return {
+                "status": "error",
+                "message": f"Action '{action}' not yet supported for experience.",
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Section '{section}' not yet fully supported.",
+            }
+
+    async def _update_about(self, text: str) -> dict[str, Any]:
+        """Update the 'About' (Summary) section of the profile."""
+        if not text:
+            return {"status": "error", "message": "No text provided for About section."}
+
+        # Scroll to ensure About section is rendered
+        await self._page.evaluate('window.scrollTo(0, 800)')
+        
+        clicked = await self._click_first(_PROFILE_EDIT_ABOUT_SELECTOR)
+        if not clicked:
+            return {
+                "status": "error",
+                "message": "Could not find 'Edit about' button. Ensure the section exists.",
+            }
+
+        await self._page.wait_for_selector(_DIALOG_SELECTOR)
+        filled = await self._fill_dialog_textarea(text)
+        if not filled:
+            return {"status": "error", "message": "Could not fill the About textarea."}
+
+        saved = await self._click_dialog_primary_button()
+        if not saved:
+            return {"status": "error", "message": "Could not click Save button."}
+
+        return {"status": "success", "message": "Profile 'About' section updated."}
+
+    async def _update_headline(self, text: str) -> dict[str, Any]:
+        """Update the 'Headline' via the Intro edit modal."""
+        if not text:
+            return {"status": "error", "message": "No text provided for Headline."}
+
+        clicked = await self._click_first(_PROFILE_EDIT_INTRO_SELECTOR)
+        if not clicked:
+            return {"status": "error", "message": "Could not find 'Edit intro' button."}
+
+        await self._page.wait_for_selector(_DIALOG_SELECTOR)
+
+        # Locate Headline input - LinkedIn often uses labels or placeholder
+        headline_input = self._page.locator(
+            'input[id*="headline"], [role="dialog"] input[name*="headline"]'
+        ).first
+        
+        try:
+            await headline_input.wait_for(timeout=3000)
+            await headline_input.fill(text)
+        except Exception:
+            # Fallback: find by label text if possible
+            try:
+                await self._page.get_by_label("Headline").fill(text)
+            except Exception:
+                return {"status": "error", "message": "Could not locate Headline field."}
+
+        saved = await self._click_dialog_primary_button()
+        if not saved:
+            return {"status": "error", "message": "Could not click Save button."}
+
+        return {"status": "success", "message": "Profile 'Headline' updated."}
+
+    async def _add_skill(self, skill_name: str) -> dict[str, Any]:
+        """Add a new skill to the profile."""
+        if not skill_name:
+            return {"status": "error", "message": "No skill name provided."}
+
+        # Skills are usually added via the details page or a specific button
+        await self._page.goto("https://www.linkedin.com/in/me/details/skills/")
+        await detect_rate_limit(self._page)
+        
+        # Click "Add skill" button (usually the first primary button or icon)
+        add_btn = self._page.locator('button[aria-label^="Add skill"]').first
+        try:
+            await add_btn.click()
+        except Exception:
+            # Try by text
+            if not await self.click_button_by_text("Add skill"):
+                 return {"status": "error", "message": "Could not find 'Add skill' button."}
+
+        await self._page.wait_for_selector(_DIALOG_SELECTOR)
+        
+        # Skill input is usually a typeahead
+        input_box = self._page.locator('[role="dialog"] input[type="text"]').first
+        await input_box.fill(skill_name)
+        await asyncio.sleep(1.0)
+        await self._page.keyboard.press("Enter")
+        await asyncio.sleep(0.5)
+
+        saved = await self._click_dialog_primary_button()
+        if not saved:
+            # Sometimes there's a "Save" or "Add" button
+            saved = await self.click_button_by_text("Save", scope=_DIALOG_SELECTOR)
+
+        return {"status": "success", "message": f"Skill '{skill_name}' added."}
+
+    async def _add_experience(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Add a new experience entry."""
+        title = data.get("title")
+        company = data.get("company")
+        if not title or not company:
+             return {"status": "error", "message": "title and company are required."}
+
+        await self._page.goto("https://www.linkedin.com/in/me/details/experience/")
+        await detect_rate_limit(self._page)
+
+        # Click the "+" button
+        add_btn = self._page.locator('button[aria-label^="Add experience"]').first
+        if not await add_btn.is_visible():
+             # Alternate button
+             add_btn = self._page.locator('a[href*="/details/experience/"] button[aria-label^="Add"]').first
+        
+        try:
+            await add_btn.click()
+            # If it's a menu, click "Add position"
+            await self._page.wait_for_timeout(500)
+            add_pos = self._page.locator('span:has-text("Add position")').first
+            if await add_pos.is_visible():
+                await add_pos.click()
+        except Exception:
+             return {"status": "error", "message": "Could not initiate 'Add experience' flow."}
+
+        await self._page.wait_for_selector(_DIALOG_SELECTOR)
+
+        # Fill Title
+        await self._page.get_by_label("Title").first.fill(title)
+        # Fill Company (Typeahead)
+        company_input = self._page.get_by_label("Company name").first
+        await company_input.fill(company)
+        await asyncio.sleep(1.5) # Wait for typeahead
+        await self._page.keyboard.press("ArrowDown")
+        await self._page.keyboard.press("Enter")
+
+        # Optional fields: employment_type, location, start_date, description
+        if data.get("description"):
+             # Description is usually a textarea
+             desc_field = self._page.locator('[role="dialog"] textarea').first
+             await desc_field.fill(data["description"])
+
+        saved = await self._click_dialog_primary_button()
+        if not saved:
+             return {"status": "error", "message": "Could not save the new experience."}
+
+        return {"status": "success", "message": f"Experience at {company} added."}
 
     async def _wait_for_message_surface(
         self,
