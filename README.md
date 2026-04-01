@@ -36,11 +36,16 @@ Suggest improvements for my CV to target this job posting https://www.linkedin.c
 What has Anthropic been posting about recently? https://www.linkedin.com/company/anthropicresearch/
 ```
 
+```
+Update my LinkedIn about section to highlight my recent work in generative AI
+```
+
 ## Features & Tool Status
 
 | Tool | Description | Status |
 |------|-------------|--------|
 | `get_person_profile` | Get profile info with explicit section selection (experience, education, interests, honors, languages, contact_info, posts) | Working |
+| `update_person_profile` | Update a specific section of your own LinkedIn profile (requires confirmation) | Working |
 | `connect_with_person` | Send a connection request or accept an incoming one, with optional note | Working |
 | `get_sidebar_profiles` | Extract profile URLs from sidebar recommendation sections ("More profiles for you", "Explore premium profiles", "People you may know") on a profile page | Working |
 | `get_inbox` | List recent conversations from the LinkedIn messaging inbox | Working |
