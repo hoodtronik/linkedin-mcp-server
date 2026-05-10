@@ -62,6 +62,9 @@ Update my LinkedIn about section to highlight my recent work in generative AI
 > [!IMPORTANT]
 > **Breaking change:** LinkedIn recently made some changes to prevent scraping. The newest version uses [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright-python) with persistent browser profiles instead of Playwright with session files. Old `session.json` files and `LINKEDIN_COOKIE` env vars are no longer supported. Run `--login` again to create a new profile + cookie file that can be mounted in docker. 02/2026
 
+> [!WARNING]
+> **Profile Editing Risk:** Automated writing and editing via `update_person_profile` carries a high risk of triggering LinkedIn's bot-detection algorithms, which may result in a temporary account lockout. LinkedIn's DOM selectors change frequently, which often causes automated edits to timeout or fail. The primary and safest value of this MCP server is in its **READ-ONLY** extraction capabilities (pulling your profile data to draft updates offline). It is highly recommended to perform actual profile edits manually.
+
 <br/>
 <br/>
 
