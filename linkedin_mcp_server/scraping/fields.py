@@ -14,6 +14,8 @@ PERSON_SECTIONS: dict[str, tuple[str, bool]] = {
     "languages": ("/details/languages/", False),
     "contact_info": ("/overlay/contact-info/", True),
     "posts": ("/recent-activity/all/", False),
+    "skills": ("/details/skills/", False),
+    "projects": ("/details/projects/", False),
 }
 
 COMPANY_SECTIONS: dict[str, tuple[str, bool]] = {

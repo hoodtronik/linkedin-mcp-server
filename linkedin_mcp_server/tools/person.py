@@ -264,20 +264,26 @@ def register_person_tools(mcp: FastMCP) -> None:
     async def update_person_profile(
         section: Annotated[
             Literal[
-                "about", "headline", "skills", "experience", "education", "contact_info"
+                "about",
+                "headline",
+                "skills",
+                "projects",
+                "experience",
+                "education",
+                "contact_info",
             ],
             Field(description="The profile section to modify"),
         ],
         action: Annotated[
             Literal["update", "add", "remove"],
             Field(
-                description="The action to perform (e.g., 'update' for about/headline, 'add' for skills/experience)"
+                description="The action to perform (e.g., 'update' for about/headline, 'add' for skills/experience/projects)"
             ),
         ],
         data: Annotated[
             dict[str, Any],
             Field(
-                description="Dictionary of fields to update. For 'about'/'headline', use {'text': '...'}. For 'skills', use {'name': '...'}. For 'experience', use {'title': '...', 'company': '...', 'description': '...'}"
+                description="Dictionary of fields to update. For 'about'/'headline', use {'text': '...'}. For 'skills', use {'name': '...'}. For 'projects', use {'name': '...', 'description': '...'}. For 'experience', use {'title': '...', 'company': '...', 'description': '...'}"
             ),
         ],
         confirm: Annotated[bool, Field(description="Must be True to apply changes")],

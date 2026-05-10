@@ -7,7 +7,7 @@
   <a href="https://github.com/stickerdaniel/linkedin-mcp-server/blob/main/LICENSE" target="_blank"><img src="https://img.shields.io/badge/License-Apache%202.0-%233fb950?labelColor=32383f" alt="License"></a>
 </p>
 
-Through this LinkedIn MCP server, AI assistants like Claude can connect to your LinkedIn. Access profiles and companies, search for jobs, or get job details.
+Through this LinkedIn MCP server, AI assistants like Claude can connect to your LinkedIn. Read and edit your profile sections, access companies, search for jobs, or get job details.
 
 ## Installation Methods
 
@@ -44,8 +44,8 @@ Update my LinkedIn about section to highlight my recent work in generative AI
 
 | Tool | Description | Status |
 |------|-------------|--------|
-| `get_person_profile` | Get profile info with explicit section selection (experience, education, interests, honors, languages, contact_info, posts) | Working |
-| `update_person_profile` | Update a specific section of your own LinkedIn profile (requires confirmation) | Working |
+| `get_person_profile` | Get profile info with explicit section selection (experience, education, interests, honors, languages, contact_info, posts, projects, skills) | Working |
+| `update_person_profile` | Update a specific section of your own LinkedIn profile (about, headline, skills, projects, experience, education, contact_info) | Working |
 | `connect_with_person` | Send a connection request or accept an incoming one, with optional note | Working |
 | `get_sidebar_profiles` | Extract profile URLs from sidebar recommendation sections ("More profiles for you", "Explore premium profiles", "People you may know") on a profile page | Working |
 | `get_inbox` | List recent conversations from the LinkedIn messaging inbox | Working |
