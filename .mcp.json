@@ -6,6 +6,17 @@
       "headers": {
         "Authorization": "Bearer ${GREPTILE_API_KEY}"
       }
+    },
+    "linkedin": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "g:\\_AI_Agents\\LinedinUpdate",
+        "run",
+        "linkedin-scraper-mcp",
+        "--chrome-path",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      ]
     }
   }
 }

@@ -13,6 +13,7 @@ from pydantic import Field
 
 from linkedin_mcp_server.callbacks import MCPContextProgressCallback
 from linkedin_mcp_server.constants import TOOL_TIMEOUT_SECONDS
+from linkedin_mcp_server.config import get_config
 from linkedin_mcp_server.core.exceptions import AuthenticationError
 from linkedin_mcp_server.dependencies import get_ready_extractor, handle_auth_error
 from linkedin_mcp_server.error_handler import raise_tool_error
@@ -154,6 +155,11 @@ def register_person_tools(mcp: FastMCP) -> None:
         """
         Send a LinkedIn connection request or accept an incoming one.
 
+        ⚠️ **[USE AT YOUR OWN RISK - HIGH BAN RISK]**
+        Automated connections can trigger LinkedIn's bot detection and lead to temporary lockouts.
+        This feature is disabled by default. To use it, you must run the server with
+        `--enable-write` or set `LINKEDIN_ENABLE_WRITE=true` in your environment.
+
         The tool is annotated with destructiveHint so MCP clients will
         prompt for user confirmation before execution.
 
@@ -169,6 +175,15 @@ def register_person_tools(mcp: FastMCP) -> None:
             note_not_supported, connected, or accepted.
         """
         try:
+            if not get_config().server.enable_write_operations:
+                raise_tool_error(
+                    Exception(
+                        "Write operations are disabled by default for safety. "
+                        "To use this feature, run the server with --enable-write or set LINKEDIN_ENABLE_WRITE=true."
+                    ),
+                    "connect_with_person",
+                )
+
             extractor = extractor or await get_ready_extractor(
                 ctx, tool_name="connect_with_person"
             )
@@ -293,6 +308,12 @@ def register_person_tools(mcp: FastMCP) -> None:
         """
         Update a specific section of your own LinkedIn profile.
 
+        ⚠️ **[USE AT YOUR OWN RISK - HIGH BAN RISK]**
+        Automated profile edits often fail due to changing LinkedIn DOM selectors and can
+        trigger bot detection lockouts. The primary supported use of this MCP server is
+        read-only extraction. This feature is disabled by default. To use it, you must
+        run the server with `--enable-write` or set `LINKEDIN_ENABLE_WRITE=true`.
+
         This tool allows you to modify your own profile sections like About, Headline,
         Skills, and Experiences. It requires confirm=True to execute.
 
@@ -304,6 +325,15 @@ def register_person_tools(mcp: FastMCP) -> None:
             ctx: FastMCP context for progress reporting
         """
         try:
+            if not get_config().server.enable_write_operations:
+                raise_tool_error(
+                    Exception(
+                        "Write operations are disabled by default for safety. "
+                        "To use this feature, run the server with --enable-write or set LINKEDIN_ENABLE_WRITE=true."
+                    ),
+                    "update_person_profile",
+                )
+
             extractor = extractor or await get_ready_extractor(
                 ctx, tool_name="update_person_profile"
             )

@@ -11,6 +11,7 @@ from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from linkedin_mcp_server.constants import TOOL_TIMEOUT_SECONDS
+from linkedin_mcp_server.config import get_config
 from linkedin_mcp_server.core.exceptions import (
     AuthenticationError,
     LinkedInScraperException,
@@ -199,6 +200,11 @@ def register_messaging_tools(mcp: FastMCP) -> None:
         """
         Send a message to a LinkedIn user.
 
+        ⚠️ **[USE AT YOUR OWN RISK - HIGH BAN RISK]**
+        Automated messaging can trigger LinkedIn's bot detection and lead to temporary lockouts.
+        This feature is disabled by default. To use it, you must run the server with
+        `--enable-write` or set `LINKEDIN_ENABLE_WRITE=true` in your environment.
+
         The recipient must be directly messageable from the profile page. This is a
         write operation when confirm_send is True.
 
@@ -217,6 +223,15 @@ def register_messaging_tools(mcp: FastMCP) -> None:
             Dict with url, status, message, recipient_selected, and sent.
         """
         try:
+            if confirm_send and not get_config().server.enable_write_operations:
+                raise_tool_error(
+                    Exception(
+                        "Write operations are disabled by default for safety. "
+                        "To send messages, run the server with --enable-write or set LINKEDIN_ENABLE_WRITE=true."
+                    ),
+                    "send_message",
+                )
+
             extractor = extractor or await get_ready_extractor(
                 ctx, tool_name="send_message"
             )

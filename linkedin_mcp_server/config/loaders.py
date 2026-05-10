@@ -52,6 +52,7 @@ class EnvironmentKeys:
     VIEWPORT = "VIEWPORT"
     CHROME_PATH = "CHROME_PATH"
     USER_DATA_DIR = "USER_DATA_DIR"
+    ENABLE_WRITE = "LINKEDIN_ENABLE_WRITE"
 
 
 def is_interactive_environment() -> bool:
@@ -98,6 +99,14 @@ def load_from_env(config: AppConfig) -> AppConfig:
             raise ConfigurationError(
                 f"Invalid TRANSPORT: '{transport_env}'. Must be 'stdio' or 'streamable-http'."
             )
+
+    # Enable write operations
+    if enable_write_env := os.environ.get(EnvironmentKeys.ENABLE_WRITE):
+        enable_write_value = _normalize_env(enable_write_env)
+        if enable_write_value in TRUTHY_VALUES:
+            config.server.enable_write_operations = True
+        elif enable_write_value in FALSY_VALUES:
+            config.server.enable_write_operations = False
 
     # Persistent browser profile directory
     if user_data_dir := os.environ.get(EnvironmentKeys.USER_DATA_DIR):
@@ -264,6 +273,12 @@ def load_from_args(config: AppConfig) -> AppConfig:
     )
 
     parser.add_argument(
+        "--enable-write",
+        action="store_true",
+        help="Enable potentially risky write operations (update profile, send messages, etc.)",
+    )
+
+    parser.add_argument(
         "--user-data-dir",
         type=str,
         default=None,
@@ -326,6 +341,9 @@ def load_from_args(config: AppConfig) -> AppConfig:
 
     if args.logout:
         config.server.logout = True
+
+    if args.enable_write:
+        config.server.enable_write_operations = True
 
     if args.user_data_dir:
         config.browser.user_data_dir = args.user_data_dir
